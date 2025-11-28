@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name     ODM Colours & Critical Dashboard
-// @description     V2.9.33 - FIX: Hover-Effekte (Text-Glow und Cursor-Art) für die Kopierfunktion wurden entfernt/abgeschwächt, um eine subtilere Optik zu gewährleisten.
-// @version    2.9.33
+// @description     V2.9.38 - UPDATE: Das '🚨 Trailer öffnen (Rote Box)' Dashboard wurde in 'TDR benötigt' umbenannt.
+// @version    2.9.38
 // @author   jutharsa
 // @include  https://trans-logistics-eu.amazon.com/ssp/dock/*
 // @require  http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js
@@ -11,7 +11,7 @@
 // @grant    GM_getValue
 // ==/UserScript==
 
-// === 0. Global Styles (Rollback auf V2.9.17 CSS) ===
+// === 0. Global Styles (inkl. NEUE RED Box Styles) ===
 
 GM_addStyle(`
 /* --- Wrapper for Alignment (Filter Buttons + Dashboard Group) --- */
@@ -23,7 +23,7 @@ GM_addStyle(`
     margin-bottom: 15px;
 }
 
-/* --- Container for the two Dashboards --- */
+/* --- Container for the THREE Dashboards --- */
 #dashboardGroup {
     display: flex;
     gap: 15px;
@@ -77,26 +77,20 @@ GM_addStyle(`
     font-size:13px;
     font-weight:bold;
     color: #f0f0f0;
-
     /* V2.9.33: Hintergrund-Hover entfernt */
     cursor: default;
     transition: background 0.1s;
 }
-/* V2.9.33: Hintergrund-Hover entfernt */
-/* .critical-dashboard .criticalItem:hover {
-    background: rgba(255, 255, 255, 0.05);
-} */
 
 /* NEU: Styling für das direkt klickbare Element */
 .critical-dashboard .criticalItem .dock-id-copy {
-    cursor: pointer; /* V2.9.33: Subtilerer Pointer, kein 'copy' */
+    cursor: pointer;
+    /* V2.9.33: Subtilerer Pointer, kein 'copy' */
     display: inline-block;
-    padding-right: 5px; /* Abstand zum SDT-Status */
+    padding-right: 5px;
+    /* Abstand zum SDT-Status */
 }
-/* V2.9.33: Text-Glow entfernt */
-/* .critical-dashboard .criticalItem .dock-id-copy:hover {
-    text-shadow: 0 0 5px #fff;
-} */
+
 
 /* NEU (V2.9.21): Schriftgröße für Dock/Gate/Bay ID erhöhen */
 .critical-dashboard .criticalItem .dock-id-large {
@@ -138,15 +132,30 @@ GM_addStyle(`
     box-shadow: 0 0 15px rgba(3, 195, 20, 0.5), inset 0 0 8px rgba(255, 255, 255, 0.05);
 }
 
+/* --- NEU: RED Box Dashboard Style (Verwendung des Danger-Styles, aber mit stärkerem Glow/Fokus) --- */
+#redBoxCriticalDashboard {
+    background: linear-gradient(180deg, #380000 0%, #2A0000 100%);
+    border: 3px solid #FF0000;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.8), inset 0 0 8px rgba(255, 255, 255, 0.05);
+}
+/* Zustand OK für RED Box Dashboard (wenn keine roten Boxen aktiv sind) */
+#redBoxCriticalDashboard.ok-border {
+    background: linear-gradient(180deg, #005A00 0%, #004D00 100%);
+    border: 3px solid #03C314;
+    box-shadow: 0 0 15px rgba(3, 195, 20, 0.5), inset 0 0 8px rgba(255, 255, 255, 0.05);
+}
+
 /* --- OPTIK FIX: Bessere Lesbarkeit der Listeneinträge im At Risk Zustand --- */
-.critical-dashboard.danger-border .criticalItem {
+.critical-dashboard.danger-border .criticalItem,
+#redBoxCriticalDashboard.danger-border .criticalItem { /* RED Box Style Hinzugefügt */
     background: rgba(255, 255, 255, 0.05);
     padding: 3px 4px;
     border-radius: 4px;
     margin-bottom: 3px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
-.critical-dashboard.danger-border .criticalItem:last-child {
+.critical-dashboard.danger-border .criticalItem:last-child,
+#redBoxCriticalDashboard.danger-border .criticalItem:last-child { /* RED Box Style Hinzugefügt */
     border-bottom: none !important;
 }
 
@@ -158,6 +167,11 @@ GM_addStyle(`
 .critical-dashboard .badge.danger {
     background:#cc0000 !important;
     box-shadow: 0 0 10px rgba(255, 0, 0, 1) !important;
+}
+/* NEU: Spezieller Alarm-Badge für die RED BOX */
+#redBoxCriticalBadge.danger {
+    background: #FF0000 !important;
+    box-shadow: 0 0 12px rgba(255, 0, 0, 1.5) !important;
 }
 
 /* --- Text Colors within lists/table cells (SDT Status) --- */
@@ -314,7 +328,7 @@ function colorText(jNode) {
 }
 
 
-// === 3. Critical Dashboard Logic & ALARM LOGIC ===
+// === 3. Critical Dashboard Logic & ALARM LOGIC (ANGEPASST FÜR RED BOX) ===
 
 // Speichert den letzten Zähler (Initialwert 0, wenn nicht gesetzt)
 let lastCriticalCount = GM_getValue('lastCriticalCount', 0);
@@ -322,8 +336,9 @@ let originalTitle = document.title;
 let audioAlert = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAgAAAAAAwJAAAAAAAAAAwBAAAAAAAwKgAAAAAAMGAAAAAAMqAAAAAAAAAACqAAAAAACgAAAAAAAAAACpAAAAAACsAAAAAAAAAACxAAAAAAAAAABPAAAAAAATAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'); // Kurzer, unaufdringlicher Piep
 
 function getPVal(pCell) {
+    // Verwendet für P, TSO und andere Zählspalten
     const rawPText = pCell.textContent.trim().replace(/[^0-9]/g, '');
-    return parseInt(rawPText, 10);
+    return parseInt(rawPText, 10) || 0; // Rückgabe 0, wenn ungültig
 }
 
 function updateDashboardView(dashboard, badge, list, count, html) {
@@ -341,10 +356,12 @@ function updateDashboardView(dashboard, badge, list, count, html) {
 }
 
 
-// DIESE FUNKTION WURDE ANGEPASST (V2.9.32)
+// DIESE FUNKTION WURDE ERWEITERT UND KORRIGIERT (V2.9.37)
 function updateDashboard(){
     const table = document.querySelector('table.dataTable.display');
     if(!table) return;
+
+    // Bestehende Dashboards
     const pDashboard = document.querySelector('#pCriticalDashboard');
     const sdtDashboard = document.querySelector('#sdtCriticalDashboard');
     const pBadge = document.querySelector('#pCriticalBadge');
@@ -352,10 +369,16 @@ function updateDashboard(){
     const pList = document.querySelector('#pCriticalList');
     const sdtList = document.querySelector('#sdtCriticalList');
 
-    if (!pDashboard || !sdtDashboard) return;
+    // NEUE RED Box Dashboards
+    const redBoxDashboard = document.querySelector('#redBoxCriticalDashboard');
+    const redBoxBadge = document.querySelector('#redBoxCriticalBadge');
+    const redBoxList = document.querySelector('#redBoxCriticalList');
+
+    // Wichtig: Jetzt drei Dashboards prüfen
+    if (!pDashboard || !sdtDashboard || !redBoxDashboard) return;
 
     const headers = table.querySelectorAll('thead th');
-    let pIndex=-1, sdtIndex=-1, sortRouteIndex=-1, locationIndex=-1;
+    let pIndex=-1, sdtIndex=-1, sortRouteIndex=-1, locationIndex=-1, tsoIndex=-1, dockIdIndex=-1;
 
     headers.forEach((th,i)=>{
         const txt=th.textContent.trim();
@@ -365,38 +388,46 @@ function updateDashboard(){
         else if(txt.includes('SDT')) sdtIndex=i;
         // WICHTIG: Die Location/Destination Spalte wird zur Primär-ID
         else if(txt.includes('Location') || txt.includes('Destination') || txt.includes('Standort') || txt.includes('Ziel')) locationIndex=i;
-
-        // WICHTIG: Index für die Sort/Route Spalte
+        // Index für die Sort/Route Spalte
         else if(txt.includes('Sort') || txt.includes('Route') || txt.includes('sorting_2') || txt.includes('sort')) sortRouteIndex=i;
+        // NEU: TSO Index
+        else if(txt === 'TSO') tsoIndex = i;
+        // NEU: Dock ID Index (oft 4. Spalte) - Für die Erkennung der roten Box
+        else if(txt.includes('Dock') || txt.includes('Gate') || txt.includes('Bay')) dockIdIndex = i;
     });
-    // Wir benötigen P, Location und SDT für die Grundfunktion. Sort/Route ist optional, aber stark gewünscht.
+
+    // Wir benötigen P, Location und SDT für die Grundfunktion. TSO/DockID für Red Box.
     if(pIndex < 0 || locationIndex < 0 || sdtIndex < 0) return;
+
+    // Fallback: Wenn Dock/Gate/Bay nicht gefunden, nutze Location Index, da dort die ID steht
+    const criticalVisualIndex = dockIdIndex >= 0 ? dockIdIndex : locationIndex;
 
     let pCount=0, pHtml='';
     let sdtCount=0, sdtHtml='';
+    let redBoxCount=0, redBoxHtml=''; // NEU
+
     // ACHTUNG: Zählt nur SICHTBARE Zeilen!
     table.querySelectorAll('tbody tr').forEach(row=>{
         const cells = row.querySelectorAll('td');
         // Sicherheitscheck
         if (cells.length <= Math.max(pIndex, locationIndex, sdtIndex)) return;
         if (sortRouteIndex >= 0 && cells.length <= sortRouteIndex) return;
+        if (tsoIndex >= 0 && cells.length <= tsoIndex) return; // NEU TSO Check
 
         const pCell = cells[pIndex];
         const sdtCell = cells[sdtIndex];
 
-        // 1. Rohdaten abrufen
-        const valLocationRaw
-        = cells[locationIndex].textContent.trim().toUpperCase();
+        // 1. Rohdaten abrufen & Display-Variablen VOR JEDEM CHECK DEFINIEREN (STRUKTURELLER FIX)
+        const valLocationRaw = cells[locationIndex].textContent.trim().toUpperCase();
         const valSortRouteRaw = sortRouteIndex >= 0 ? cells[sortRouteIndex].textContent.trim().toUpperCase() : '';
 
         let primaryDisplayId = valLocationRaw.split(' ')[0].replace(/[\(\)!✓]/g, '').trim();
         let sortRouteDisplay = valSortRouteRaw;
 
-        // --- Extrahieren der finalen Destination aus Sort/Route (z.B. DTM1->PSR2 -> PSR2) ---
+        // --- Extrahieren der finalen Destination aus Sort/Route ---
         if (sortRouteDisplay.includes('->')) {
             const parts = sortRouteDisplay.split('->');
-            if
-            (parts.length > 1) {
+            if (parts.length > 1) {
                 sortRouteDisplay = parts.pop().trim();
             }
         }
@@ -406,83 +437,113 @@ function updateDashboard(){
             sortRouteDisplay = '';
         }
 
-        if (!primaryDisplayId) return;
+        if (!primaryDisplayId) return; // Überspringen wenn keine ID identifizierbar
 
         const pVal = getPVal(pCell);
+
+        // NEU: TSO-Wert abrufen für RED Box Check
+        const tsoCell = tsoIndex >= 0 ? cells[tsoIndex] : null;
+        const tsoVal = tsoCell ? getPVal(tsoCell) : 0;
+
         const sdtText = sdtCell.textContent.trim();
         const depUtc = parseSDT(sdtText);
 
         pCell.classList.remove('p-critical-highlight');
         sdtCell.classList.remove('sdt-critical-highlight');
 
+        // --- ANZEIGE FORMATIERUNG (V2.9.30) - Muss VOR den Dashboard-Einträgen stehen ---
+        let sortRoutePart = '';
+        // Füge den Sort/Route Inhalt hinzu, falls vorhanden.
+        if(sortRouteDisplay && sortRouteDisplay.length < 15) {
+            sortRoutePart = `<span style="font-size:14px; color:#ffffff; font-weight:bold;"> - ${sortRouteDisplay}</span>`;
+        } else if (sortRouteDisplay) {
+            sortRoutePart = `<span style="font-size:14px; color:#ffffff; font-weight:bold;"> - ${valSortRouteRaw}</span>`;
+        }
+
+        // Text, der kopiert werden soll (Location - Finale Route)
+        const copyText = `${primaryDisplayId} ${sortRoutePart.replace(/<[^>]*>/g, '').trim()}`.trim();
+
+        // Endgültiges Format: <SPAN (Location - Sort/Route) mit DATA-Attributen> - <SDT Status>
+        const newDisplayContent = (listId, sdtStatusText = '', sdtStatusClass = '') => {
+            const sdtPart = sdtStatusText ? `- <span class="${sdtStatusClass}">${sdtStatusText}</span>` : '';
+            return `
+                <span
+                    class="dock-id-copy"
+                    data-copy-text="${copyText.replace(/"/g, '&quot;')}"
+                    data-list-id="${listId}"
+                    title="Klick zum Kopieren: ${copyText}"
+                >
+                    <span class="dock-id-large">${primaryDisplayId}</span>${sortRoutePart}
+                </span>
+                ${sdtPart}`;
+        };
+
+        // --- SDT/P CRITICAL LOGIC ---
         if (depUtc !== null) {
             const {colorClass,text,diffHrs} = getSDTStatus(depUtc);
             const pCritical = (!isNaN(pVal) && pVal > 1000);
             const sdtCritical = diffHrs < 1;
 
-            // --- ANZEIGE FORMATIERUNG (V2.9.30) ---
-            let sortRoutePart = '';
-
-            // Füge den Sort/Route Inhalt hinzu, falls vorhanden.
-            if(sortRouteDisplay && sortRouteDisplay.length < 15) {
-                // Format: - PSR2
-                // Helle Farbe und BOLD für den Sort-Wert
-                sortRoutePart = `<span style="font-size:14px; color:#ffffff; font-weight:bold;"> - ${sortRouteDisplay}</span>`;
-            } else if (sortRouteDisplay) {
-                 // Füge den kompletten, langen Sort/Route Inhalt hinzu, falls er bereinigt nicht passt.
-                 sortRoutePart = `<span style="font-size:14px; color:#ffffff; font-weight:bold;"> - ${valSortRouteRaw}</span>`;
-            }
-
-            // Text, der kopiert werden soll (Location - Finale Route)
-            const copyText = `${primaryDisplayId} ${sortRoutePart.replace(/<[^>]*>/g, '').trim()}`.trim();
-
-            // Endgültiges Format: <SPAN (Location - Sort/Route) mit DATA-Attributen> - ⏳ 7h until SDT
-            const newDisplayContent = `
-                <span
-                    class="dock-id-copy"
-                    data-copy-text="${copyText.replace(/"/g, '&quot;')}"
-                    data-list-id="${pList.id}"
-                    title="Klick zum Kopieren: ${copyText}"
-                >
-                    <span class="dock-id-large">${primaryDisplayId}</span>${sortRoutePart}
-                </span>
-                - <span class="${colorClass}">${text}</span>`;
-
-            // --- P CRITICAL LOGIC (P > 1000) ---
+            // --- P CRITICAL LOGIC ---
             if (pCritical) {
                 pCount++;
-                pHtml += `<div class="criticalItem">${newDisplayContent}</div>`;
+                pHtml += `<div class="criticalItem">${newDisplayContent(pList.id, text, colorClass)}</div>`;
                 pCell.classList.add('p-critical-highlight');
             }
 
-            // --- SDT CRITICAL LOGIC (SDT < 1h) ---
+            // --- SDT CRITICAL LOGIC ---
             if (sdtCritical) {
                 sdtCount++;
-                // Hier muss 'sdtList.id' verwendet werden
-                const sdtDisplayContent = `
-                    <span
-                        class="dock-id-copy"
-                        data-copy-text="${copyText.replace(/"/g, '&quot;')}"
-                        data-list-id="${sdtList.id}"
-                        title="Klick zum Kopieren: ${copyText}"
-                    >
-                        <span class="dock-id-large">${primaryDisplayId}</span>${sortRoutePart}
-                    </span>
-                    - <span class="${colorClass}">${text}</span>`;
-
-                sdtHtml += `<div class="criticalItem">${sdtDisplayContent}</div>`;
+                sdtHtml += `<div class="criticalItem">${newDisplayContent(sdtList.id, text, colorClass)}</div>`;
                 sdtCell.classList.add('sdt-critical-highlight');
             }
+        }
+
+        // 3. NEU: RED Box Critical Logic (FIX FÜR ERKENNUNG V2.9.37)
+        // Die Zelle, in der die rote Umrandung erwartet wird
+        const $criticalCell = $(cells[criticalVisualIndex]);
+
+        // V2.9.36/V2.9.37 FIX: `.addBack()` stellt sicher, dass die Zelle und alle Kindelemente geprüft werden.
+        const isRedBordered = $criticalCell.find('*').addBack().filter(function() {
+             const $el = $(this);
+             const borderColor = $el.css('border-color').toLowerCase();
+
+             // Prüft auf RGB(255, 0, 0), da 'red' oft so gerendert wird.
+             return (borderColor === 'rgb(255, 0, 0)' ||
+                     borderColor === 'rgb(220, 53, 69)' || // Bootstrap-Rot
+                     borderColor === 'red' ||
+                     ($el.css('border-style') === 'solid' && $el.css('border-width') === '1px')
+                    );
+        }).length > 0;
+
+        // Red Box Logik (V2.9.37): Zählt JEDE rote Box, unabhängig vom TSO, da die rote Box selbst die Kritikalität signalisiert.
+        if (isRedBordered) {
+             redBoxCount++;
+
+             // Fügt SDT Status hinzu, falls vorhanden.
+             let sdtStatusText = '';
+             let sdtStatusClass = '';
+
+             if (depUtc !== null) {
+                 const {colorClass,text} = getSDTStatus(depUtc);
+                 sdtStatusText = text;
+                 sdtStatusClass = colorClass;
+             }
+
+             // Zeigt auch den TSO-Wert an, wenn er > 0 ist, zur Information.
+             const tsoDisplay = tsoVal > 0 ? ` (TSO: ${tsoVal})` : '';
+
+             redBoxHtml += `<div class="criticalItem">${newDisplayContent(redBoxList.id, sdtStatusText, sdtStatusClass)}${tsoDisplay}</div>`;
         }
     });
 
     // Update Dashboards
     updateDashboardView(pDashboard, pBadge, pList, pCount, pHtml);
     updateDashboardView(sdtDashboard, sdtBadge, sdtList, sdtCount, sdtHtml);
+    updateDashboardView(redBoxDashboard, redBoxBadge, redBoxList, redBoxCount, redBoxHtml); // NEU
 
     // --- ALARM LOGIC ---
-    const totalCount = pCount + sdtCount;
-
+    const totalCount = pCount + sdtCount + redBoxCount; // NEU: Red Box zählt zum Gesamtalarm
     if (totalCount > 0) {
         document.title = `(🚨 ${totalCount}) ${originalTitle}`;
         if (lastCriticalCount === 0) {
@@ -546,15 +607,11 @@ function addTopSearchFilterButtons() {
                     padding:5px 10px;
                     background:${color};
                     border:none;
-
-
                     color:#fff;
                     border-radius:5px;
                     cursor:pointer;
                     font-size:18px;
                     font-weight:bold;
-
-
     ">${f}</button>
             `);
             btn.on("click", function() {
@@ -563,9 +620,7 @@ function addTopSearchFilterButtons() {
                 input.val(f);
                 ['keydown','keypress','keyup'].forEach(ev => {
 
-
-
-   input[0].dispatchEvent(new KeyboardEvent(ev,{
+                    input[0].dispatchEvent(new KeyboardEvent(ev,{
                         key:'Enter', code:'Enter', keyCode:13, which:13, bubbles:true
                     }));
                 });
@@ -586,7 +641,6 @@ function addTopSearchFilterButtons() {
         "FRA3", "FRA7", "HAM2", "KDE5", "KTW3", "LCJ2", "LCY2", "LEJ1",
         "LEJ5", "LIL1", "MAD7", "MRS1", "MUC3", "MXP6", "NUE1", "ORY1",
         "ORY4", "OVD1",
-
         "PAD1", "PAD2",
         "POZ1", "POZ2", "PRG2", "PSR2", "RLG1", "RMU1", "SCN2", "STR1",
         "SVQ1", "SZZ1", "TRN1", "WRO2", "XAR1", "XFR4"
@@ -604,15 +658,11 @@ function addTopSearchFilterButtons() {
                     padding:5px 10px;
                     background:#333;
                     border:none;
-
-
                     color:white;
                     border-radius:5px;
                     cursor:pointer;
                     font-size:18px;
                     font-weight:bold;
-
-
     ">${f}</button>
             `);
 
@@ -621,9 +671,7 @@ function addTopSearchFilterButtons() {
                 input.val(f);
                 ['keydown','keypress','keyup'].forEach(ev => {
 
-
-
-   input[0].dispatchEvent(new KeyboardEvent(ev,{
+                    input[0].dispatchEvent(new KeyboardEvent(ev,{
                         key:'Enter', code:'Enter', keyCode:13, which:13, bubbles:true
                     }));
                 });
@@ -647,8 +695,6 @@ function addTopSearchFilterButtons() {
 // === 5. Initialization ===
 
 function initializeCombinedFeatures() {
-    // KEINE ZUWEISUNG VON copyToClipboard ZU window MEHR NÖTIG
-
     const filterBox = $('div.dataTables_filter');
     if (!filterBox.length || $('#dashboardWrapper').length) return;
 
@@ -668,11 +714,15 @@ function initializeCombinedFeatures() {
     const sdtDashboardContainer = createDashboard('sdtCriticalDashboard', 'Abfahrt At Risk (SDT < 1h)');
     dashboardGroup.append(sdtDashboardContainer);
 
+    // 3c. NEU: RED BOX Dashboard hinzufügen (Titel geändert auf 'TDR benötigt')
+    const redBoxDashboardContainer = createDashboard('redBoxCriticalDashboard', 'TDR benötigt');
+    dashboardGroup.append(redBoxDashboardContainer);
+
     wrapper.append(dashboardGroup);
     // 4. Den Wrapper vor dem Suchfeld einfügen
     filterBox.before(wrapper);
 
-    // 5. Klick-Event Delegation HINZUFÜGEN (NEU V2.9.32)
+    // 5. Klick-Event Delegation HINZUFÜGEN (Kopierfunktion)
     // Wir hängen den Klick-Handler an den Haupt-Wrapper, damit er auch bei dynamischen Updates funktioniert
     $(wrapper).on('click', '.dock-id-copy', function() {
         const textToCopy = $(this).data('copy-text');
@@ -681,7 +731,6 @@ function initializeCombinedFeatures() {
             copyToClipboard(textToCopy, listId);
         }
     });
-
     // 6. Update-Zyklus starten (nachdem dem Element im DOM ist)
     setInterval(updateDashboard,3000);
     updateDashboard();
