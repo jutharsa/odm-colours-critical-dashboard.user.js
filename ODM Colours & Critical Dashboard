@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name     ODM Colours & Critical Dashboard
-// @description     V2.9.30 - FIX: Der extrahierte Routen-Wert aus der Sort/Route-Spalte (z.B. PSR2) wird nun ebenfalls fett (bold) angezeigt, um die Lesbarkeit zu verbessern.
-// @version    2.9.30
+// @description     V2.9.33 - FIX: Hover-Effekte (Text-Glow und Cursor-Art) für die Kopierfunktion wurden entfernt/abgeschwächt, um eine subtilere Optik zu gewährleisten.
+// @version    2.9.33
 // @author   jutharsa
 // @include  https://trans-logistics-eu.amazon.com/ssp/dock/*
 // @require  http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js
@@ -77,7 +77,27 @@ GM_addStyle(`
     font-size:13px;
     font-weight:bold;
     color: #f0f0f0;
+
+    /* V2.9.33: Hintergrund-Hover entfernt */
+    cursor: default;
+    transition: background 0.1s;
 }
+/* V2.9.33: Hintergrund-Hover entfernt */
+/* .critical-dashboard .criticalItem:hover {
+    background: rgba(255, 255, 255, 0.05);
+} */
+
+/* NEU: Styling für das direkt klickbare Element */
+.critical-dashboard .criticalItem .dock-id-copy {
+    cursor: pointer; /* V2.9.33: Subtilerer Pointer, kein 'copy' */
+    display: inline-block;
+    padding-right: 5px; /* Abstand zum SDT-Status */
+}
+/* V2.9.33: Text-Glow entfernt */
+/* .critical-dashboard .criticalItem .dock-id-copy:hover {
+    text-shadow: 0 0 5px #fff;
+} */
+
 /* NEU (V2.9.21): Schriftgröße für Dock/Gate/Bay ID erhöhen */
 .critical-dashboard .criticalItem .dock-id-large {
     font-size: 16px;
@@ -218,6 +238,39 @@ function processSDTCell(sdtCell) {
 }
 
 
+// === 1.5. Copy Function (V2.9.32) ===
+function copyToClipboard(textToCopy, dashboardListId) {
+    // Stellt sicher, dass die Funktion im Userscript-Kontext existiert
+    if (typeof navigator.clipboard === 'undefined') {
+        alert('Zwischenablage-API nicht verfügbar. Bitte manuell kopieren: ' + textToCopy);
+        return;
+    }
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        // Erfolgsmeldung im Badge anzeigen (Badge ID wird aus List ID abgeleitet)
+        const badge = document.querySelector(`#${dashboardListId.replace('List', 'Badge')}`);
+        if(badge) {
+            const originalText = badge.textContent;
+            badge.textContent = '✅ Copied!';
+            // Rückkehr zum ursprünglichen Text nach kurzer Zeit
+            setTimeout(() => {
+                badge.textContent = originalText;
+            }, 1000);
+        }
+        // Zusätzlicher kurzer Alarm-Ton zur Bestätigung
+        try {
+            const audio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAgAAAAMmMAAAAeAAAAAUAAAD8AAAA'); // Sehr kurzes, leises "Klick"-Geräusch
+            audio.play();
+        } catch (e) {
+            console.error("Audio playback failed for copy confirmation:", e);
+        }
+    }).catch(err => {
+        console.error('Konnte nicht kopieren: ', err);
+        alert(`Konnte nicht automatisch kopieren. Bitte manuell kopieren: ${textToCopy}`);
+    });
+}
+
+
 // === 2. Table Coloring (Per Row) ===
 
 function colorText(jNode) {
@@ -288,7 +341,7 @@ function updateDashboardView(dashboard, badge, list, count, html) {
 }
 
 
-// DIESE FUNKTION WURDE ANGEPASST (V2.9.30)
+// DIESE FUNKTION WURDE ANGEPASST (V2.9.32)
 function updateDashboard(){
     const table = document.querySelector('table.dataTable.display');
     if(!table) return;
@@ -303,7 +356,6 @@ function updateDashboard(){
 
     const headers = table.querySelectorAll('thead th');
     let pIndex=-1, sdtIndex=-1, sortRouteIndex=-1, locationIndex=-1;
-    // trailerIndex wird für die Anzeige nicht mehr verwendet, aber wir lassen ihn für Kompatibilität
 
     headers.forEach((th,i)=>{
         const txt=th.textContent.trim();
@@ -313,16 +365,15 @@ function updateDashboard(){
         else if(txt.includes('SDT')) sdtIndex=i;
         // WICHTIG: Die Location/Destination Spalte wird zur Primär-ID
         else if(txt.includes('Location') || txt.includes('Destination') || txt.includes('Standort') || txt.includes('Ziel')) locationIndex=i;
+
         // WICHTIG: Index für die Sort/Route Spalte
         else if(txt.includes('Sort') || txt.includes('Route') || txt.includes('sorting_2') || txt.includes('sort')) sortRouteIndex=i;
     });
-
     // Wir benötigen P, Location und SDT für die Grundfunktion. Sort/Route ist optional, aber stark gewünscht.
     if(pIndex < 0 || locationIndex < 0 || sdtIndex < 0) return;
 
     let pCount=0, pHtml='';
     let sdtCount=0, sdtHtml='';
-
     // ACHTUNG: Zählt nur SICHTBARE Zeilen!
     table.querySelectorAll('tbody tr').forEach(row=>{
         const cells = row.querySelectorAll('td');
@@ -334,7 +385,8 @@ function updateDashboard(){
         const sdtCell = cells[sdtIndex];
 
         // 1. Rohdaten abrufen
-        const valLocationRaw = cells[locationIndex].textContent.trim().toUpperCase();
+        const valLocationRaw
+        = cells[locationIndex].textContent.trim().toUpperCase();
         const valSortRouteRaw = sortRouteIndex >= 0 ? cells[sortRouteIndex].textContent.trim().toUpperCase() : '';
 
         let primaryDisplayId = valLocationRaw.split(' ')[0].replace(/[\(\)!✓]/g, '').trim();
@@ -343,8 +395,9 @@ function updateDashboard(){
         // --- Extrahieren der finalen Destination aus Sort/Route (z.B. DTM1->PSR2 -> PSR2) ---
         if (sortRouteDisplay.includes('->')) {
             const parts = sortRouteDisplay.split('->');
-            if (parts.length > 1) {
-                sortRouteDisplay = parts.pop().trim(); // Nimm den letzten Teil (PSR2)
+            if
+            (parts.length > 1) {
+                sortRouteDisplay = parts.pop().trim();
             }
         }
 
@@ -353,7 +406,7 @@ function updateDashboard(){
             sortRouteDisplay = '';
         }
 
-        if (!primaryDisplayId) return; // Überspringen wenn keine ID identifizierbar
+        if (!primaryDisplayId) return;
 
         const pVal = getPVal(pCell);
         const sdtText = sdtCell.textContent.trim();
@@ -374,16 +427,26 @@ function updateDashboard(){
             if(sortRouteDisplay && sortRouteDisplay.length < 15) {
                 // Format: - PSR2
                 // Helle Farbe und BOLD für den Sort-Wert
-                // **GEÄNDERT: font-weight:normal -> font-weight:bold**
                 sortRoutePart = `<span style="font-size:14px; color:#ffffff; font-weight:bold;"> - ${sortRouteDisplay}</span>`;
             } else if (sortRouteDisplay) {
                  // Füge den kompletten, langen Sort/Route Inhalt hinzu, falls er bereinigt nicht passt.
-                 // **GEÄNDERT: font-weight:normal -> font-weight:bold**
                  sortRoutePart = `<span style="font-size:14px; color:#ffffff; font-weight:bold;"> - ${valSortRouteRaw}</span>`;
             }
 
-            // Endgültiges Format: Location - Sort/Route - ⏳ 7h until SDT
-            const newDisplayContent = `<span class="dock-id-large">${primaryDisplayId}</span>${sortRoutePart} - <span class="${colorClass}">${text}</span>`;
+            // Text, der kopiert werden soll (Location - Finale Route)
+            const copyText = `${primaryDisplayId} ${sortRoutePart.replace(/<[^>]*>/g, '').trim()}`.trim();
+
+            // Endgültiges Format: <SPAN (Location - Sort/Route) mit DATA-Attributen> - ⏳ 7h until SDT
+            const newDisplayContent = `
+                <span
+                    class="dock-id-copy"
+                    data-copy-text="${copyText.replace(/"/g, '&quot;')}"
+                    data-list-id="${pList.id}"
+                    title="Klick zum Kopieren: ${copyText}"
+                >
+                    <span class="dock-id-large">${primaryDisplayId}</span>${sortRoutePart}
+                </span>
+                - <span class="${colorClass}">${text}</span>`;
 
             // --- P CRITICAL LOGIC (P > 1000) ---
             if (pCritical) {
@@ -395,7 +458,19 @@ function updateDashboard(){
             // --- SDT CRITICAL LOGIC (SDT < 1h) ---
             if (sdtCritical) {
                 sdtCount++;
-                sdtHtml += `<div class="criticalItem">${newDisplayContent}</div>`;
+                // Hier muss 'sdtList.id' verwendet werden
+                const sdtDisplayContent = `
+                    <span
+                        class="dock-id-copy"
+                        data-copy-text="${copyText.replace(/"/g, '&quot;')}"
+                        data-list-id="${sdtList.id}"
+                        title="Klick zum Kopieren: ${copyText}"
+                    >
+                        <span class="dock-id-large">${primaryDisplayId}</span>${sortRoutePart}
+                    </span>
+                    - <span class="${colorClass}">${text}</span>`;
+
+                sdtHtml += `<div class="criticalItem">${sdtDisplayContent}</div>`;
                 sdtCell.classList.add('sdt-critical-highlight');
             }
         }
@@ -472,13 +547,15 @@ function addTopSearchFilterButtons() {
                     background:${color};
                     border:none;
 
+
                     color:#fff;
                     border-radius:5px;
                     cursor:pointer;
                     font-size:18px;
                     font-weight:bold;
 
-        ">${f}</button>
+
+    ">${f}</button>
             `);
             btn.on("click", function() {
                 let input = filterBox.find('input');
@@ -487,7 +564,8 @@ function addTopSearchFilterButtons() {
                 ['keydown','keypress','keyup'].forEach(ev => {
 
 
-                    input[0].dispatchEvent(new KeyboardEvent(ev,{
+
+   input[0].dispatchEvent(new KeyboardEvent(ev,{
                         key:'Enter', code:'Enter', keyCode:13, which:13, bubbles:true
                     }));
                 });
@@ -508,6 +586,7 @@ function addTopSearchFilterButtons() {
         "FRA3", "FRA7", "HAM2", "KDE5", "KTW3", "LCJ2", "LCY2", "LEJ1",
         "LEJ5", "LIL1", "MAD7", "MRS1", "MUC3", "MXP6", "NUE1", "ORY1",
         "ORY4", "OVD1",
+
         "PAD1", "PAD2",
         "POZ1", "POZ2", "PRG2", "PSR2", "RLG1", "RMU1", "SCN2", "STR1",
         "SVQ1", "SZZ1", "TRN1", "WRO2", "XAR1", "XFR4"
@@ -526,13 +605,15 @@ function addTopSearchFilterButtons() {
                     background:#333;
                     border:none;
 
+
                     color:white;
                     border-radius:5px;
                     cursor:pointer;
                     font-size:18px;
                     font-weight:bold;
 
-        ">${f}</button>
+
+    ">${f}</button>
             `);
 
             btn.on("click", function() {
@@ -541,7 +622,8 @@ function addTopSearchFilterButtons() {
                 ['keydown','keypress','keyup'].forEach(ev => {
 
 
-                    input[0].dispatchEvent(new KeyboardEvent(ev,{
+
+   input[0].dispatchEvent(new KeyboardEvent(ev,{
                         key:'Enter', code:'Enter', keyCode:13, which:13, bubbles:true
                     }));
                 });
@@ -565,8 +647,11 @@ function addTopSearchFilterButtons() {
 // === 5. Initialization ===
 
 function initializeCombinedFeatures() {
+    // KEINE ZUWEISUNG VON copyToClipboard ZU window MEHR NÖTIG
+
     const filterBox = $('div.dataTables_filter');
     if (!filterBox.length || $('#dashboardWrapper').length) return;
+
     // 1. Haupt-Wrapper erstellen
     let wrapper = $(`<div id="dashboardWrapper"></div>`);
     // 2. Filter-Buttons (links) erstellen und hinzufügen
@@ -575,20 +660,29 @@ function initializeCombinedFeatures() {
     // 3. Dashboard-Gruppe (rechts) erstellen
     let dashboardGroup = $(`<div id="dashboardGroup"></div>`);
 
-    // 3a.
-    // P-Dashboard erstellen und hinzufügen
+    // 3a. P-Dashboard erstellen und hinzufügen
     const pDashboardContainer = createDashboard('pCriticalDashboard', 'Volle Trailer (P > 1000)');
     dashboardGroup.append(pDashboardContainer);
 
-    // 3b.
-    // SDT-Dashboard erstellen und hinzufügen
+    // 3b. SDT-Dashboard erstellen und hinzufügen
     const sdtDashboardContainer = createDashboard('sdtCriticalDashboard', 'Abfahrt At Risk (SDT < 1h)');
     dashboardGroup.append(sdtDashboardContainer);
 
     wrapper.append(dashboardGroup);
     // 4. Den Wrapper vor dem Suchfeld einfügen
     filterBox.before(wrapper);
-    // 5. Update-Zyklus starten (nachdem dem Element im DOM ist)
+
+    // 5. Klick-Event Delegation HINZUFÜGEN (NEU V2.9.32)
+    // Wir hängen den Klick-Handler an den Haupt-Wrapper, damit er auch bei dynamischen Updates funktioniert
+    $(wrapper).on('click', '.dock-id-copy', function() {
+        const textToCopy = $(this).data('copy-text');
+        const listId = $(this).data('list-id');
+        if (textToCopy) {
+            copyToClipboard(textToCopy, listId);
+        }
+    });
+
+    // 6. Update-Zyklus starten (nachdem dem Element im DOM ist)
     setInterval(updateDashboard,3000);
     updateDashboard();
 }
