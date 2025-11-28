@@ -475,7 +475,7 @@ function addTopSearchFilterButtons() {
                     color:#fff;
                     border-radius:5px;
                     cursor:pointer;
-                    font-size:14px;
+                    font-size:18px;
                     font-weight:bold;
 
         ">${f}</button>
@@ -529,7 +529,7 @@ function addTopSearchFilterButtons() {
                     color:white;
                     border-radius:5px;
                     cursor:pointer;
-                    font-size:14px;
+                    font-size:18px;
                     font-weight:bold;
 
         ">${f}</button>
