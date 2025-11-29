@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name     ODM Colours & Critical Dashboard
-// @description     V2.9.38 - UPDATE: Das '🚨 Trailer öffnen (Rote Box)' Dashboard wurde in 'TDR benötigt' umbenannt.
-// @version    2.9.38
-// @author   jutharsa
+// @description     V2.9.41 - FIX: SDT Farben korrigiert. FIX: Dashboard-Gruppe auf 'flex-wrap: nowrap' für sauberere Darstellung in einer Zeile.
+// @version    2.9.41
+// @author   jutharsa (Optimized by AI)
 // @include  https://trans-logistics-eu.amazon.com/ssp/dock/*
 // @require  http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js
 // @require  https://gist.github.com/raw/2625891/waitForKeyElements.js
@@ -11,9 +11,27 @@
 // @grant    GM_getValue
 // ==/UserScript==
 
-// === 0. Global Styles (inkl. NEUE RED Box Styles) ===
+// === 0. Global Styles (inkl. NEUE RED Box Styles & CSS Variablen) ===
 
 GM_addStyle(`
+/* --- CSS Variablen für bessere Wartbarkeit (V2.9.39) --- */
+:root {
+    /* Critical Colors */
+    --color-red-primary: #FF0000;
+    --color-yellow-primary: #FFD700;
+    --color-green-primary: #03C314;
+
+    /* Dashboard Backgrounds */
+    --bg-danger-dark: #5A0000;
+    --bg-danger-light: #6e0000;
+    --bg-ok-dark: #004D00;
+    --bg-ok-light: #005A00;
+
+    /* Spacing */
+    --spacing-m: 15px;
+    --spacing-s: 8px;
+}
+
 /* --- Wrapper for Alignment (Filter Buttons + Dashboard Group) --- */
 #dashboardWrapper {
     display: flex;
@@ -23,12 +41,11 @@ GM_addStyle(`
     margin-bottom: 15px;
 }
 
-/* --- Container for the THREE Dashboards --- */
+/* --- Container for the THREE Dashboards (V2.9.41: KEIN WRAP) --- */
 #dashboardGroup {
     display: flex;
-    gap: 15px;
-    /* Abstand zwischen den Dashboards */
-    flex-wrap: wrap;
+    gap: var(--spacing-m); /* Abstand zwischen den Dashboards */
+    flex-wrap: nowrap; /* WICHTIG: Verhindert den Umbruch auf eine neue Zeile */
 }
 
 /* --- Critical Dashboard Common Styles (ULTRA-KOMPAKTER) --- */
@@ -36,7 +53,7 @@ GM_addStyle(`
     position: relative;
     overflow: hidden;
     color:white;
-    padding:8px;
+    padding:var(--spacing-s);
     border-radius:10px;
     width:240px; /* Ultra-Kompakt: Schmaler */
     min-width: 240px; /* Ultra-Kompakt: Schmaler */
@@ -48,6 +65,11 @@ GM_addStyle(`
     box-shadow: 0 4px 8px rgba(0,0,0,0.7), inset 0 0 8px rgba(255, 255, 255, 0.05);
     border: 3px solid #444;
     transition: all 0.3s ease-in-out;
+}
+
+/* Red Box Dashboard erhält eine höhere Priorität (V2.9.39) */
+#redBoxCriticalDashboard {
+    z-index: 100;
 }
 
 /* Header-Gruppe für Badge und Titel */
@@ -64,20 +86,18 @@ GM_addStyle(`
 .critical-dashboard h2 {
     font-size:15px;
     font-weight:bold;
-    margin:0 0 0 5px;
-    /* Reduziert: Näher an Badge */
+    margin:0 0 0 5px; /* Reduziert: Näher an Badge */
     padding-bottom: 0;
     border-bottom: none;
     width: auto;
     flex-grow: 1;
 }
 .critical-dashboard .criticalItem {
-    padding:2px 0;
+    padding:3px 0; /* Leicht erhöht für bessere Lesbarkeit */
     border-bottom:1px solid #777;
     font-size:13px;
     font-weight:bold;
     color: #f0f0f0;
-    /* V2.9.33: Hintergrund-Hover entfernt */
     cursor: default;
     transition: background 0.1s;
 }
@@ -85,20 +105,16 @@ GM_addStyle(`
 /* NEU: Styling für das direkt klickbare Element */
 .critical-dashboard .criticalItem .dock-id-copy {
     cursor: pointer;
-    /* V2.9.33: Subtilerer Pointer, kein 'copy' */
     display: inline-block;
-    padding-right: 5px;
-    /* Abstand zum SDT-Status */
+    padding-right: 5px; /* Abstand zum SDT-Status */
 }
 
 
 /* NEU (V2.9.21): Schriftgröße für Dock/Gate/Bay ID erhöhen */
 .critical-dashboard .criticalItem .dock-id-large {
-    font-size: 16px;
-    /* Deutlich größer als 13px */
+    font-size: 16px; /* Deutlich größer als 13px */
     font-weight: 900; /* Extra bold */
-    color: #fff;
-    /* Weiß für maximale Sichtbarkeit */
+    color: #fff; /* Weiß für maximale Sichtbarkeit */
 }
 .critical-dashboard .criticalItem:last-child { border-bottom:none;
 }
@@ -120,38 +136,38 @@ GM_addStyle(`
     box-shadow:0 0 6px rgba(0,0,0,0.4);
 }
 
-/* --- Ampel Background & Border Colors mit GLOW --- */
+/* --- Ampel Background & Border Colors mit GLOW (Verwendung von CSS Variablen) --- */
 .critical-dashboard.danger-border {
-    background: linear-gradient(180deg, #6e0000 0%, #5A0000 100%);
-    border: 3px solid #FF0000;
+    background: linear-gradient(180deg, var(--bg-danger-light) 0%, var(--bg-danger-dark) 100%);
+    border: 3px solid var(--color-red-primary);
     box-shadow: 0 0 15px rgba(255, 0, 0, 0.5), inset 0 0 8px rgba(255, 255, 255, 0.05);
 }
 .critical-dashboard.ok-border {
-    background: linear-gradient(180deg, #005A00 0%, #004D00 100%);
-    border: 3px solid #03C314;
+    background: linear-gradient(180deg, var(--bg-ok-light) 0%, var(--bg-ok-dark) 100%);
+    border: 3px solid var(--color-green-primary);
     box-shadow: 0 0 15px rgba(3, 195, 20, 0.5), inset 0 0 8px rgba(255, 255, 255, 0.05);
 }
 
-/* --- NEU: RED Box Dashboard Style (Verwendung des Danger-Styles, aber mit stärkerem Glow/Fokus) --- */
+/* --- RED Box Dashboard Style (Stärkerer Glow) --- */
 #redBoxCriticalDashboard {
     background: linear-gradient(180deg, #380000 0%, #2A0000 100%);
-    border: 3px solid #FF0000;
+    border: 3px solid var(--color-red-primary);
     box-shadow: 0 0 20px rgba(255, 0, 0, 0.8), inset 0 0 8px rgba(255, 255, 255, 0.05);
 }
 /* Zustand OK für RED Box Dashboard (wenn keine roten Boxen aktiv sind) */
 #redBoxCriticalDashboard.ok-border {
-    background: linear-gradient(180deg, #005A00 0%, #004D00 100%);
-    border: 3px solid #03C314;
+    background: linear-gradient(180deg, var(--bg-ok-light) 0%, var(--bg-ok-dark) 100%);
+    border: 3px solid var(--color-green-primary);
     box-shadow: 0 0 15px rgba(3, 195, 20, 0.5), inset 0 0 8px rgba(255, 255, 255, 0.05);
 }
 
 /* --- OPTIK FIX: Bessere Lesbarkeit der Listeneinträge im At Risk Zustand --- */
 .critical-dashboard.danger-border .criticalItem,
 #redBoxCriticalDashboard.danger-border .criticalItem { /* RED Box Style Hinzugefügt */
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08); /* Kontrast leicht erhöht (V2.9.39) */
     padding: 3px 4px;
     border-radius: 4px;
-    margin-bottom: 3px;
+    margin-bottom: 5px; /* Abstand erhöht (V2.9.39) */
     border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 .critical-dashboard.danger-border .criticalItem:last-child,
@@ -161,7 +177,7 @@ GM_addStyle(`
 
 /* --- Badge Status FARBEN --- */
 .critical-dashboard.ok-border .badge {
-    background: #03C314;
+    background: var(--color-green-primary);
     box-shadow: 0 0 10px rgba(3, 195, 20, 1);
 }
 .critical-dashboard .badge.danger {
@@ -170,15 +186,15 @@ GM_addStyle(`
 }
 /* NEU: Spezieller Alarm-Badge für die RED BOX */
 #redBoxCriticalBadge.danger {
-    background: #FF0000 !important;
+    background: var(--color-red-primary) !important;
     box-shadow: 0 0 12px rgba(255, 0, 0, 1.5) !important;
 }
 
 /* --- Text Colors within lists/table cells (SDT Status) --- */
-.sdt-red { color:#FF0000;
+.sdt-red { color:var(--color-red-primary);
 }
-.sdt-yellow { color:#FFD700; }
-.sdt-green { color:#03C314;
+.sdt-yellow { color:var(--color-yellow-primary); }
+.sdt-green { color:var(--color-green-primary);
 }
 
 /* --- Table Highlighting Styles --- */
@@ -190,7 +206,19 @@ GM_addStyle(`
 .sdt-critical-highlight {
     background: #FFF0F0 !important;
 }
+
+/* Styling für Filter-Buttons (V2.9.39: Erhöhter Kontrast für Destinations) */
+#topFilterButtons button {
+    transition: transform 0.1s ease-out;
+}
+#topFilterButtons button:hover {
+    transform: scale(1.05);
+}
+#topFilterButtons button:not([style*="orange"]) {
+    background: #444 !important; /* Dunkleres Grau für besseren Kontrast */
+}
 `);
+
 // === 1. SDT & P Helpers ===
 
 function parseSDT(sdtText){
@@ -244,9 +272,10 @@ function processSDTCell(sdtCell) {
 
     const { colorClass, text } = getSDTStatus(depUtc);
 
-    let displayColor = "#03C314";
-    if (colorClass === 'sdt-red') displayColor = "#D85D5D";
-    else if (colorClass === 'sdt-yellow') displayColor = "#D9C94D";
+    let displayColor = "#03C314"; // Default Grün
+    // V2.9.41 FIX: Verwendung der globalen CSS Variablen, um die korrekten, leuchtenden Farben zu erhalten
+    if (colorClass === 'sdt-red') displayColor = "var(--color-red-primary)";
+    else if (colorClass === 'sdt-yellow') displayColor = "var(--color-yellow-primary)";
 
     sdtCell.append(`<div data-sdt-display="true" style="color:${displayColor}; font-size:1.1em; font-weight:bold;">${text}</div>`);
 }
@@ -267,6 +296,7 @@ function copyToClipboard(textToCopy, dashboardListId) {
             const originalText = badge.textContent;
             badge.textContent = '✅ Copied!';
             // Rückkehr zum ursprünglichen Text nach kurzer Zeit
+
             setTimeout(() => {
                 badge.textContent = originalText;
             }, 1000);
@@ -274,6 +304,7 @@ function copyToClipboard(textToCopy, dashboardListId) {
         // Zusätzlicher kurzer Alarm-Ton zur Bestätigung
         try {
             const audio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAgAAAAMmMAAAAeAAAAAUAAAD8AAAA'); // Sehr kurzes, leises "Klick"-Geräusch
+
             audio.play();
         } catch (e) {
             console.error("Audio playback failed for copy confirmation:", e);
@@ -341,13 +372,22 @@ function getPVal(pCell) {
     return parseInt(rawPText, 10) || 0; // Rückgabe 0, wenn ungültig
 }
 
+// V2.9.39: Logik aktualisiert, um die Liste automatisch anzuzeigen
 function updateDashboardView(dashboard, badge, list, count, html) {
+    const listIsHidden = list.style.display === 'none';
+
     if (count > 0) {
         dashboard.classList.add('danger-border');
         dashboard.classList.remove('ok-border');
+        if (listIsHidden) {
+             list.style.display = 'block'; // Automatisch anzeigen, wenn kritisch (V2.9.39)
+        }
     } else {
         dashboard.classList.add('ok-border');
         dashboard.classList.remove('danger-border');
+        if (!listIsHidden) {
+            list.style.display = 'none'; // Automatisch verstecken, wenn alles OK (V2.9.39)
+        }
     }
 
     badge.textContent=count;
@@ -368,18 +408,14 @@ function updateDashboard(){
     const sdtBadge = document.querySelector('#sdtCriticalBadge');
     const pList = document.querySelector('#pCriticalList');
     const sdtList = document.querySelector('#sdtCriticalList');
-
     // NEUE RED Box Dashboards
     const redBoxDashboard = document.querySelector('#redBoxCriticalDashboard');
     const redBoxBadge = document.querySelector('#redBoxCriticalBadge');
     const redBoxList = document.querySelector('#redBoxCriticalList');
-
     // Wichtig: Jetzt drei Dashboards prüfen
     if (!pDashboard || !sdtDashboard || !redBoxDashboard) return;
-
     const headers = table.querySelectorAll('thead th');
     let pIndex=-1, sdtIndex=-1, sortRouteIndex=-1, locationIndex=-1, tsoIndex=-1, dockIdIndex=-1;
-
     headers.forEach((th,i)=>{
         const txt=th.textContent.trim();
 
@@ -390,21 +426,22 @@ function updateDashboard(){
         else if(txt.includes('Location') || txt.includes('Destination') || txt.includes('Standort') || txt.includes('Ziel')) locationIndex=i;
         // Index für die Sort/Route Spalte
         else if(txt.includes('Sort') || txt.includes('Route') || txt.includes('sorting_2') || txt.includes('sort')) sortRouteIndex=i;
+
         // NEU: TSO Index
         else if(txt === 'TSO') tsoIndex = i;
         // NEU: Dock ID Index (oft 4. Spalte) - Für die Erkennung der roten Box
         else if(txt.includes('Dock') || txt.includes('Gate') || txt.includes('Bay')) dockIdIndex = i;
     });
-
     // Wir benötigen P, Location und SDT für die Grundfunktion. TSO/DockID für Red Box.
     if(pIndex < 0 || locationIndex < 0 || sdtIndex < 0) return;
-
     // Fallback: Wenn Dock/Gate/Bay nicht gefunden, nutze Location Index, da dort die ID steht
-    const criticalVisualIndex = dockIdIndex >= 0 ? dockIdIndex : locationIndex;
+    const criticalVisualIndex = dockIdIndex >= 0 ?
+    dockIdIndex : locationIndex;
 
     let pCount=0, pHtml='';
     let sdtCount=0, sdtHtml='';
-    let redBoxCount=0, redBoxHtml=''; // NEU
+    let redBoxCount=0, redBoxHtml='';
+    // NEU
 
     // ACHTUNG: Zählt nur SICHTBARE Zeilen!
     table.querySelectorAll('tbody tr').forEach(row=>{
@@ -440,9 +477,9 @@ function updateDashboard(){
         if (!primaryDisplayId) return; // Überspringen wenn keine ID identifizierbar
 
         const pVal = getPVal(pCell);
-
         // NEU: TSO-Wert abrufen für RED Box Check
-        const tsoCell = tsoIndex >= 0 ? cells[tsoIndex] : null;
+        const tsoCell = tsoIndex >= 0 ?
+        cells[tsoIndex] : null;
         const tsoVal = tsoCell ? getPVal(tsoCell) : 0;
 
         const sdtText = sdtCell.textContent.trim();
@@ -462,16 +499,16 @@ function updateDashboard(){
 
         // Text, der kopiert werden soll (Location - Finale Route)
         const copyText = `${primaryDisplayId} ${sortRoutePart.replace(/<[^>]*>/g, '').trim()}`.trim();
-
         // Endgültiges Format: <SPAN (Location - Sort/Route) mit DATA-Attributen> - <SDT Status>
         const newDisplayContent = (listId, sdtStatusText = '', sdtStatusClass = '') => {
-            const sdtPart = sdtStatusText ? `- <span class="${sdtStatusClass}">${sdtStatusText}</span>` : '';
+            const sdtPart = sdtStatusText ?
+            `- <span class="${sdtStatusClass}">${sdtStatusText}</span>` : '';
             return `
                 <span
                     class="dock-id-copy"
                     data-copy-text="${copyText.replace(/"/g, '&quot;')}"
                     data-list-id="${listId}"
-                    title="Klick zum Kopieren: ${copyText}"
+                   title="Klick zum Kopieren: ${copyText}"
                 >
                     <span class="dock-id-large">${primaryDisplayId}</span>${sortRoutePart}
                 </span>
@@ -479,6 +516,7 @@ function updateDashboard(){
         };
 
         // --- SDT/P CRITICAL LOGIC ---
+
         if (depUtc !== null) {
             const {colorClass,text,diffHrs} = getSDTStatus(depUtc);
             const pCritical = (!isNaN(pVal) && pVal > 1000);
@@ -486,6 +524,7 @@ function updateDashboard(){
 
             // --- P CRITICAL LOGIC ---
             if (pCritical) {
+
                 pCount++;
                 pHtml += `<div class="criticalItem">${newDisplayContent(pList.id, text, colorClass)}</div>`;
                 pCell.classList.add('p-critical-highlight');
@@ -493,6 +532,7 @@ function updateDashboard(){
 
             // --- SDT CRITICAL LOGIC ---
             if (sdtCritical) {
+
                 sdtCount++;
                 sdtHtml += `<div class="criticalItem">${newDisplayContent(sdtList.id, text, colorClass)}</div>`;
                 sdtCell.classList.add('sdt-critical-highlight');
@@ -502,7 +542,6 @@ function updateDashboard(){
         // 3. NEU: RED Box Critical Logic (FIX FÜR ERKENNUNG V2.9.37)
         // Die Zelle, in der die rote Umrandung erwartet wird
         const $criticalCell = $(cells[criticalVisualIndex]);
-
         // V2.9.36/V2.9.37 FIX: `.addBack()` stellt sicher, dass die Zelle und alle Kindelemente geprüft werden.
         const isRedBordered = $criticalCell.find('*').addBack().filter(function() {
              const $el = $(this);
@@ -515,15 +554,12 @@ function updateDashboard(){
                      ($el.css('border-style') === 'solid' && $el.css('border-width') === '1px')
                     );
         }).length > 0;
-
         // Red Box Logik (V2.9.37): Zählt JEDE rote Box, unabhängig vom TSO, da die rote Box selbst die Kritikalität signalisiert.
         if (isRedBordered) {
              redBoxCount++;
-
              // Fügt SDT Status hinzu, falls vorhanden.
              let sdtStatusText = '';
              let sdtStatusClass = '';
-
              if (depUtc !== null) {
                  const {colorClass,text} = getSDTStatus(depUtc);
                  sdtStatusText = text;
@@ -540,7 +576,8 @@ function updateDashboard(){
     // Update Dashboards
     updateDashboardView(pDashboard, pBadge, pList, pCount, pHtml);
     updateDashboardView(sdtDashboard, sdtBadge, sdtList, sdtCount, sdtHtml);
-    updateDashboardView(redBoxDashboard, redBoxBadge, redBoxList, redBoxCount, redBoxHtml); // NEU
+    updateDashboardView(redBoxDashboard, redBoxBadge, redBoxList, redBoxCount, redBoxHtml);
+    // NEU
 
     // --- ALARM LOGIC ---
     const totalCount = pCount + sdtCount + redBoxCount; // NEU: Red Box zählt zum Gesamtalarm
@@ -580,7 +617,7 @@ function createDashboard(id, title) {
     const badge = container.querySelector('.badge');
     const list = container.querySelector('div[id$="List"]');
 
-    // Event-Listener auf den Badge, um die Liste umzuschalten
+    // Event-Listener auf den Badge, um die Liste umzuschalten (manuell)
     badge.addEventListener('click', ()=>list.style.display=(list.style.display==='none'?'block':'none'));
     return container;
 }
@@ -589,8 +626,9 @@ function createDashboard(id, title) {
 // === 4. Filter Buttons Logic (Geändert) ===
 
 function addTopSearchFilterButtons() {
+    // V2.9.40 FIX: max-width: 400px hinzugefügt (Ihre Anforderung)
     let topContainer = $(`
-        <div id="topFilterButtons" style="display:flex; flex-direction:column; align-items:flex-start;"></div>
+        <div id="topFilterButtons" style="display:flex; flex-direction:column; align-items:flex-start; max-width: 400px;"></div>
     `);
     const filterBox = $('div.dataTables_filter');
     if (!filterBox.length) return topContainer;
@@ -607,13 +645,13 @@ function addTopSearchFilterButtons() {
                     padding:5px 10px;
                     background:${color};
                     border:none;
-                    color:#fff;
+                   color:#fff;
                     border-radius:5px;
                     cursor:pointer;
                     font-size:18px;
                     font-weight:bold;
     ">${f}</button>
-            `);
+           `);
             btn.on("click", function() {
                 let input = filterBox.find('input');
 
@@ -621,6 +659,7 @@ function addTopSearchFilterButtons() {
                 ['keydown','keypress','keyup'].forEach(ev => {
 
                     input[0].dispatchEvent(new KeyboardEvent(ev,{
+
                         key:'Enter', code:'Enter', keyCode:13, which:13, bubbles:true
                     }));
                 });
@@ -641,7 +680,7 @@ function addTopSearchFilterButtons() {
         "FRA3", "FRA7", "HAM2", "KDE5", "KTW3", "LCJ2", "LCY2", "LEJ1",
         "LEJ5", "LIL1", "MAD7", "MRS1", "MUC3", "MXP6", "NUE1", "ORY1",
         "ORY4", "OVD1",
-        "PAD1", "PAD2",
+       "PAD1", "PAD2",
         "POZ1", "POZ2", "PRG2", "PSR2", "RLG1", "RMU1", "SCN2", "STR1",
         "SVQ1", "SZZ1", "TRN1", "WRO2", "XAR1", "XFR4"
     ];
@@ -651,20 +690,21 @@ function addTopSearchFilterButtons() {
     const row2_list = greyButtons.slice(18, 36);
     const row3_list = greyButtons.slice(36);
     function addDestRow(list) {
-        let row = $('<div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:4px;"></div>');
+        // V2.9.41: margin-bottom von 4px auf 3px reduziert für kompaktere Ansicht
+        let row = $('<div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:3px;"></div>');
         list.forEach(f => {
             let btn = $(`
                 <button style="
                     padding:5px 10px;
                     background:#333;
                     border:none;
-                    color:white;
+                   color:white;
                     border-radius:5px;
                     cursor:pointer;
                     font-size:18px;
                     font-weight:bold;
     ">${f}</button>
-            `);
+           `);
 
             btn.on("click", function() {
                 let input = filterBox.find('input');
@@ -672,6 +712,7 @@ function addTopSearchFilterButtons() {
                 ['keydown','keypress','keyup'].forEach(ev => {
 
                     input[0].dispatchEvent(new KeyboardEvent(ev,{
+
                         key:'Enter', code:'Enter', keyCode:13, which:13, bubbles:true
                     }));
                 });
@@ -697,7 +738,6 @@ function addTopSearchFilterButtons() {
 function initializeCombinedFeatures() {
     const filterBox = $('div.dataTables_filter');
     if (!filterBox.length || $('#dashboardWrapper').length) return;
-
     // 1. Haupt-Wrapper erstellen
     let wrapper = $(`<div id="dashboardWrapper"></div>`);
     // 2. Filter-Buttons (links) erstellen und hinzufügen
@@ -717,11 +757,9 @@ function initializeCombinedFeatures() {
     // 3c. NEU: RED BOX Dashboard hinzufügen (Titel geändert auf 'TDR benötigt')
     const redBoxDashboardContainer = createDashboard('redBoxCriticalDashboard', 'TDR benötigt');
     dashboardGroup.append(redBoxDashboardContainer);
-
     wrapper.append(dashboardGroup);
     // 4. Den Wrapper vor dem Suchfeld einfügen
     filterBox.before(wrapper);
-
     // 5. Klick-Event Delegation HINZUFÜGEN (Kopierfunktion)
     // Wir hängen den Klick-Handler an den Haupt-Wrapper, damit er auch bei dynamischen Updates funktioniert
     $(wrapper).on('click', '.dock-id-copy', function() {
