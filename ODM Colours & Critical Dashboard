@@ -2,7 +2,7 @@
 // @name     ODM Colours & Critical Dashboard
 // @description     V2.9.41 - FIX: SDT Farben korrigiert. FIX: Dashboard-Gruppe auf 'flex-wrap: nowrap' für sauberere Darstellung in einer Zeile.
 // @version    2.9.41
-// @author   jutharsa (Optimized by AI)
+// @author   jutharsa
 // @include  https://trans-logistics-eu.amazon.com/ssp/dock/*
 // @require  http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js
 // @require  https://gist.github.com/raw/2625891/waitForKeyElements.js
