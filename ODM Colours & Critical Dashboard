@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name     ODM Colours & Critical Dashboard
-// @description     V2.9.49 - NEU: Low P & Short SDT Dashboard zeigt nun den aktuellen P-Wert (Paketanzahl) direkt hinter der Destination an.
-// @version    2.9.49
+// @description     V2.9.52 - Dashboard-Listen nutzen ausschließlich die Scroll-Funktion (max. 300px Höhe), um Paging zu vermeiden. Low P & Short SDT zeigt P-Wert.
+// @version    2.9.52
 // @author   TSO Dock S3
 // @include  https://trans-logistics-eu.amazon.com/ssp/dock/*
 // @require  http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js
@@ -96,6 +96,28 @@ GM_addStyle(`
     width: auto;
     flex-grow: 1;
 }
+
+/* --- Dashboard List Scroll Feature (V2.9.52) --- */
+.critical-dashboard div[id$="List"] {
+    max-height: 300px; /* Max. Höhe, z.B. 300px */
+    overflow-y: auto;  /* Vertikales Scrollen aktivieren */
+    padding-right: 5px; /* Platz für Scrollbar (optional) */
+    /* Webkit-spezifisches Styling für die Scrollbar */
+    scrollbar-width: thin; /* Für Firefox */
+    scrollbar-color: #555 #333; /* Für Firefox (Daumen und Spur) */
+}
+.critical-dashboard div[id$="List"]::-webkit-scrollbar {
+    width: 8px;
+}
+.critical-dashboard div[id$="List"]::-webkit-scrollbar-thumb {
+    background-color: #555;
+    border-radius: 4px;
+}
+.critical-dashboard div[id$="List"]::-webkit-scrollbar-track {
+    background-color: #333;
+}
+
+
 .critical-dashboard .criticalItem {
     padding:3px 0; /* Leicht erhöht für bessere Lesbarkeit */
     border-bottom:1px solid #777;
@@ -697,7 +719,7 @@ function createDashboard(id, title) {
 }
 
 
-// === 4. Filter Buttons Logic (Geändert) ===
+// === 4. Filter Buttons Logic (Geändert) ---
 
 function addTopSearchFilterButtons() {
     // V2.9.40 FIX: max-width: 400px hinzugefügt (Ihre Anforderung)
