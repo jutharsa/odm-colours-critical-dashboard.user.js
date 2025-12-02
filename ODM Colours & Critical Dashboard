@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name     ODM Colours & Critical Dashboard
-// @description     V2.9.48 - NEU: Low P & Short SDT Dashboard Kriterium auf SDT < 3h (anstatt 4h) zurückgesetzt.
-// @version    2.9.48
-// @author   TSO DOck S3
+// @description     V2.9.49 - NEU: Low P & Short SDT Dashboard zeigt nun den aktuellen P-Wert (Paketanzahl) direkt hinter der Destination an.
+// @version    2.9.49
+// @author   TSO Dock S3
 // @include  https://trans-logistics-eu.amazon.com/ssp/dock/*
 // @require  http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js
 // @require  https://gist.github.com/raw/2625891/waitForKeyElements.js
@@ -536,7 +536,7 @@ function updateDashboard(){
         pCell.classList.remove('p-critical-highlight');
         sdtCell.classList.remove('sdt-critical-highlight');
 
-        // --- ANZEIGE FORMATIERUNG (V2.9.30) - Muss VOR den Dashboard-Einträgen stehen ---
+        // --- ANZEIGE FORMATIERUNG (V2.9.49: P-Wert kann nun hinzugefügt werden) ---
         let sortRoutePart = '';
         // Füge den Sort/Route Inhalt hinzu, falls vorhanden.
         if(sortRouteDisplay && sortRouteDisplay.length < 15) {
@@ -547,10 +547,16 @@ function updateDashboard(){
 
         // Text, der kopiert werden soll (Location - Finale Route)
         const copyText = `${primaryDisplayId} ${sortRoutePart.replace(/<[^>]*>/g, '').trim()}`.trim();
+
         // Endgültiges Format: <SPAN (Location - Sort/Route) mit DATA-Attributen> - <SDT Status>
-        const newDisplayContent = (listId, sdtStatusText = '', sdtStatusClass = '') => {
+        const newDisplayContent = (listId, sdtStatusText = '', sdtStatusClass = '', optionalPVal = null) => {
             const sdtPart = sdtStatusText ?
             `- <span class="${sdtStatusClass}">${sdtStatusText}</span>` : '';
+
+            // NEU: P-Wert-Anzeige für Low P Dashboard (wenn optionalPVal gesetzt ist)
+            const pValPart = optionalPVal !== null ?
+            `<span style="color: #ffaa00; font-weight: 900;"> (${optionalPVal} P)</span>` : ''; // Orange P-Wert
+
             return `
                 <span
                     class="dock-id-copy"
@@ -559,7 +565,7 @@ function updateDashboard(){
 
                     title="Klick zum Kopieren: ${copyText}"
                 >
-                    <span class="dock-id-large">${primaryDisplayId}</span>${sortRoutePart}
+                    <span class="dock-id-large">${primaryDisplayId}</span>${sortRoutePart}${pValPart}
                 </span>
                 ${sdtPart}`;
         };
@@ -577,6 +583,7 @@ function updateDashboard(){
 
 
                 pCount++;
+                // P-Dashboard braucht keinen P-Wert im Detail (ist ja P-Dashboard)
                 pHtml += `<div class="criticalItem">${newDisplayContent(pList.id, text, colorClass)}</div>`;
                 pCell.classList.add('p-critical-highlight');
             }
@@ -591,15 +598,16 @@ function updateDashboard(){
             }
 
             // --- NEU: Low P & Short SDT Critical Logic ---
-            // Kriterium: P-Wert unter 400 UND SDT unter 3 Stunden (180 Minuten) - ZURÜCKGESETZT auf 3h (V2.9.48)
+            // Kriterium: P-Wert unter 400 UND SDT unter 3 Stunden (180 Minuten)
             const lowPCritical = (!isNaN(pVal) && pVal < 400);
-            const shortSDTCritical = diffHrs < 3; // SDT unter 3 Stunden
-            // NEU (V2.9.45): Dock ID Filter anwenden
+            const shortSDTCritical = diffHrs < 3;
+            // Dock ID Filter anwenden
             const dockIdAllowed = isAllowedLowPDock(primaryDisplayId);
 
             if (lowPCritical && shortSDTCritical && dockIdAllowed) {
                 lowPCount++;
-                lowPHtml += `<div class="criticalItem">${newDisplayContent(lowPCriticalList.id, text, colorClass)}</div>`;
+                // Hinzufügen des P-Wertes als optionalPVal
+                lowPHtml += `<div class="criticalItem">${newDisplayContent(lowPCriticalList.id, text, colorClass, pVal)}</div>`;
                 // Wichtig: Keine Tabellen-Highlighting für dieses Kriterium, da es eine spezielle Überwachung ist.
             }
         }
@@ -633,7 +641,7 @@ function updateDashboard(){
 
              // Zeigt auch den TSO-Wert an, wenn er > 0 ist, zur Information.
              const tsoDisplay = tsoVal > 0 ? ` (TSO: ${tsoVal})` : '';
-
+             // RED Box Dashboard braucht keinen P-Wert
              redBoxHtml += `<div class="criticalItem">${newDisplayContent(redBoxList.id, sdtStatusText, sdtStatusClass)}${tsoDisplay}</div>`;
         }
     });
