@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name     ODM Colours & Critical Dashboard
-// @description     V2.9.44 - FIX: Destinations-Buttons auf 2 Reihen reduziert.
-// @version    2.9.44
-// @author   TSO Dock S3
+// @description     V2.9.48 - NEU: Low P & Short SDT Dashboard Kriterium auf SDT < 3h (anstatt 4h) zurückgesetzt.
+// @version    2.9.48
+// @author   TSO DOck S3
 // @include  https://trans-logistics-eu.amazon.com/ssp/dock/*
 // @require  http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js
 // @require  https://gist.github.com/raw/2625891/waitForKeyElements.js
@@ -416,6 +416,21 @@ function updateDashboardView(dashboard, badge, list, count, html) {
     list.innerHTML=html || "<div style='color:#ccc;'>Keine kritischen Trailer</div>";
 }
 
+// NEU (V2.9.45): Dock-ID-Filter für Low P & Short SDT
+function isAllowedLowPDock(dockId) {
+    if (!dockId.startsWith('DD')) return false;
+    const num = parseInt(dockId.substring(2), 10);
+    if (isNaN(num)) return false;
+
+    // Range 1: DD055 to DD073 (inklusive)
+    const isRange1 = (num >= 55 && num <= 73);
+
+    // Range 2: DD079 to DD090 (inklusive)
+    const isRange2 = (num >= 79 && num <= 90);
+
+    return isRange1 || isRange2;
+}
+
 
 // DIESE FUNKTION WURDE ERWEITERT UND KORRIGIERT (V2.9.37)
 function updateDashboard(){
@@ -576,11 +591,13 @@ function updateDashboard(){
             }
 
             // --- NEU: Low P & Short SDT Critical Logic ---
-            // Kriterium: P-Wert unter 400 UND SDT unter 2 Stunden (120 Minuten)
+            // Kriterium: P-Wert unter 400 UND SDT unter 3 Stunden (180 Minuten) - ZURÜCKGESETZT auf 3h (V2.9.48)
             const lowPCritical = (!isNaN(pVal) && pVal < 400);
-            const shortSDTCritical = diffHrs < 2; // SDT unter 2 Stunden
+            const shortSDTCritical = diffHrs < 3; // SDT unter 3 Stunden
+            // NEU (V2.9.45): Dock ID Filter anwenden
+            const dockIdAllowed = isAllowedLowPDock(primaryDisplayId);
 
-            if (lowPCritical && shortSDTCritical) {
+            if (lowPCritical && shortSDTCritical && dockIdAllowed) {
                 lowPCount++;
                 lowPHtml += `<div class="criticalItem">${newDisplayContent(lowPCriticalList.id, text, colorClass)}</div>`;
                 // Wichtig: Keine Tabellen-Highlighting für dieses Kriterium, da es eine spezielle Überwachung ist.
@@ -784,7 +801,6 @@ function addTopSearchFilterButtons() {
 
     addDestRow(row1_list);
     addDestRow(row2_list);
-    // row3_list wurde entfernt
 
     return topContainer;
 }
@@ -803,8 +819,8 @@ function initializeCombinedFeatures() {
     // 3. Dashboard-Gruppe (rechts) erstellen
     let dashboardGroup = $(`<div id="dashboardGroup"></div>`);
 
-    // 3d. NEU: P < 400 + SDT < 2h Dashboard hinzufügen (AN ERSTER STELLE)
-    const lowPCriticalDashboardContainer = createDashboard('lowPCriticalDashboard', 'Low P & Short SDT (P<400 & SDT<2h)');
+    // 3d. NEU: P < 400 + SDT < 3h Dashboard hinzufügen (AN ERSTER STELLE) - Titel und Kriterium angepasst
+    const lowPCriticalDashboardContainer = createDashboard('lowPCriticalDashboard', 'Low P & Short SDT (DD055-73 / DD079-90) SDT < 3h');
     dashboardGroup.append(lowPCriticalDashboardContainer);
 
     // 3a. P-Dashboard erstellen und hinzufügen
