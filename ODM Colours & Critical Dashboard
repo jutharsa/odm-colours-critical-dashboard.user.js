@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name     ODM Colours & Critical Dashboard
-// @description     V2.9.41 - FIX: SDT Farben korrigiert. FIX: Dashboard-Gruppe auf 'flex-wrap: nowrap' für sauberere Darstellung in einer Zeile.
-// @version    2.9.41
-// @author   jutharsa
+// @description     V2.9.44 - FIX: Destinations-Buttons auf 2 Reihen reduziert.
+// @version    2.9.44
+// @author   jutharsa (Optimized by AI)
 // @include  https://trans-logistics-eu.amazon.com/ssp/dock/*
 // @require  http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js
 // @require  https://gist.github.com/raw/2625891/waitForKeyElements.js
@@ -45,7 +45,8 @@ GM_addStyle(`
 #dashboardGroup {
     display: flex;
     gap: var(--spacing-m); /* Abstand zwischen den Dashboards */
-    flex-wrap: nowrap; /* WICHTIG: Verhindert den Umbruch auf eine neue Zeile */
+    flex-wrap: nowrap;
+    /* WICHTIG: Verhindert den Umbruch auf eine neue Zeile */
 }
 
 /* --- Critical Dashboard Common Styles (ULTRA-KOMPAKTER) --- */
@@ -56,7 +57,8 @@ GM_addStyle(`
     padding:var(--spacing-s);
     border-radius:10px;
     width:240px; /* Ultra-Kompakt: Schmaler */
-    min-width: 240px; /* Ultra-Kompakt: Schmaler */
+    min-width: 240px;
+    /* Ultra-Kompakt: Schmaler */
     font-family:sans-serif;
     display:flex;
     flex-direction:column;
@@ -75,7 +77,8 @@ GM_addStyle(`
 /* Header-Gruppe für Badge und Titel */
 .critical-dashboard .header-group {
     display: flex;
-    align-items: center; /* Vertikal zentrieren */
+    align-items: center;
+    /* Vertikal zentrieren */
     width: 100%;
     margin-bottom: 5px;
     /* Reduziert */
@@ -86,7 +89,8 @@ GM_addStyle(`
 .critical-dashboard h2 {
     font-size:15px;
     font-weight:bold;
-    margin:0 0 0 5px; /* Reduziert: Näher an Badge */
+    margin:0 0 0 5px;
+    /* Reduziert: Näher an Badge */
     padding-bottom: 0;
     border-bottom: none;
     width: auto;
@@ -112,9 +116,11 @@ GM_addStyle(`
 
 /* NEU (V2.9.21): Schriftgröße für Dock/Gate/Bay ID erhöhen */
 .critical-dashboard .criticalItem .dock-id-large {
-    font-size: 16px; /* Deutlich größer als 13px */
+    font-size: 16px;
+    /* Deutlich größer als 13px */
     font-weight: 900; /* Extra bold */
-    color: #fff; /* Weiß für maximale Sichtbarkeit */
+    color: #fff;
+    /* Weiß für maximale Sichtbarkeit */
 }
 .critical-dashboard .criticalItem:last-child { border-bottom:none;
 }
@@ -163,15 +169,19 @@ GM_addStyle(`
 
 /* --- OPTIK FIX: Bessere Lesbarkeit der Listeneinträge im At Risk Zustand --- */
 .critical-dashboard.danger-border .criticalItem,
-#redBoxCriticalDashboard.danger-border .criticalItem { /* RED Box Style Hinzugefügt */
-    background: rgba(255, 255, 255, 0.08); /* Kontrast leicht erhöht (V2.9.39) */
+#redBoxCriticalDashboard.danger-border .criticalItem,
+#lowPCriticalDashboard.danger-border .criticalItem { /* NEUES Dashboard hinzugefügt */
+    background: rgba(255, 255, 255, 0.08);
+    /* Kontrast leicht erhöht (V2.9.39) */
     padding: 3px 4px;
     border-radius: 4px;
-    margin-bottom: 5px; /* Abstand erhöht (V2.9.39) */
+    margin-bottom: 5px;
+    /* Abstand erhöht (V2.9.39) */
     border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 .critical-dashboard.danger-border .criticalItem:last-child,
-#redBoxCriticalDashboard.danger-border .criticalItem:last-child { /* RED Box Style Hinzugefügt */
+#redBoxCriticalDashboard.danger-border .criticalItem:last-child,
+#lowPCriticalDashboard.danger-border .criticalItem:last-child { /* NEUES Dashboard hinzugefügt */
     border-bottom: none !important;
 }
 
@@ -189,11 +199,17 @@ GM_addStyle(`
     background: var(--color-red-primary) !important;
     box-shadow: 0 0 12px rgba(255, 0, 0, 1.5) !important;
 }
+/* NEU: Spezieller Alarm-Badge für Low P Dashboard */
+#lowPCriticalBadge.danger {
+    background: #ffaa00 !important; /* Orangener Alarm für P < 400 */
+    box-shadow: 0 0 12px rgba(255, 170, 0, 1) !important;
+}
+
 
 /* --- Text Colors within lists/table cells (SDT Status) --- */
 .sdt-red { color:var(--color-red-primary);
 }
-.sdt-yellow { color:var(--color-yellow-primary); }
+.sdt-yellow { color:var(--color-yellow-primary);}
 .sdt-green { color:var(--color-green-primary);
 }
 
@@ -215,7 +231,8 @@ GM_addStyle(`
     transform: scale(1.05);
 }
 #topFilterButtons button:not([style*="orange"]) {
-    background: #444 !important; /* Dunkleres Grau für besseren Kontrast */
+    background: #444 !important;
+    /* Dunkleres Grau für besseren Kontrast */
 }
 `);
 
@@ -272,7 +289,8 @@ function processSDTCell(sdtCell) {
 
     const { colorClass, text } = getSDTStatus(depUtc);
 
-    let displayColor = "#03C314"; // Default Grün
+    let displayColor = "#03C314";
+    // Default Grün
     // V2.9.41 FIX: Verwendung der globalen CSS Variablen, um die korrekten, leuchtenden Farben zu erhalten
     if (colorClass === 'sdt-red') displayColor = "var(--color-red-primary)";
     else if (colorClass === 'sdt-yellow') displayColor = "var(--color-yellow-primary)";
@@ -297,6 +315,7 @@ function copyToClipboard(textToCopy, dashboardListId) {
             badge.textContent = '✅ Copied!';
             // Rückkehr zum ursprünglichen Text nach kurzer Zeit
 
+
             setTimeout(() => {
                 badge.textContent = originalText;
             }, 1000);
@@ -304,6 +323,7 @@ function copyToClipboard(textToCopy, dashboardListId) {
         // Zusätzlicher kurzer Alarm-Ton zur Bestätigung
         try {
             const audio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAgAAAAMmMAAAAeAAAAAUAAAD8AAAA'); // Sehr kurzes, leises "Klick"-Geräusch
+
 
             audio.play();
         } catch (e) {
@@ -375,18 +395,19 @@ function getPVal(pCell) {
 // V2.9.39: Logik aktualisiert, um die Liste automatisch anzuzeigen
 function updateDashboardView(dashboard, badge, list, count, html) {
     const listIsHidden = list.style.display === 'none';
-
     if (count > 0) {
         dashboard.classList.add('danger-border');
         dashboard.classList.remove('ok-border');
         if (listIsHidden) {
-             list.style.display = 'block'; // Automatisch anzeigen, wenn kritisch (V2.9.39)
+             list.style.display = 'block';
+        // Automatisch anzeigen, wenn kritisch (V2.9.39)
         }
     } else {
         dashboard.classList.add('ok-border');
         dashboard.classList.remove('danger-border');
         if (!listIsHidden) {
-            list.style.display = 'none'; // Automatisch verstecken, wenn alles OK (V2.9.39)
+            list.style.display = 'none';
+        // Automatisch verstecken, wenn alles OK (V2.9.39)
         }
     }
 
@@ -412,8 +433,15 @@ function updateDashboard(){
     const redBoxDashboard = document.querySelector('#redBoxCriticalDashboard');
     const redBoxBadge = document.querySelector('#redBoxCriticalBadge');
     const redBoxList = document.querySelector('#redBoxCriticalList');
-    // Wichtig: Jetzt drei Dashboards prüfen
-    if (!pDashboard || !sdtDashboard || !redBoxDashboard) return;
+
+    // NEU: Low P/SDT Dashboards
+    const lowPCriticalDashboard = document.querySelector('#lowPCriticalDashboard');
+    const lowPCriticalBadge = document.querySelector('#lowPCriticalBadge');
+    const lowPCriticalList = document.querySelector('#lowPCriticalList');
+
+    // Wichtig: Jetzt VIER Dashboards prüfen
+    if (!pDashboard || !sdtDashboard || !redBoxDashboard || !lowPCriticalDashboard) return;
+
     const headers = table.querySelectorAll('thead th');
     let pIndex=-1, sdtIndex=-1, sortRouteIndex=-1, locationIndex=-1, tsoIndex=-1, dockIdIndex=-1;
     headers.forEach((th,i)=>{
@@ -426,6 +454,7 @@ function updateDashboard(){
         else if(txt.includes('Location') || txt.includes('Destination') || txt.includes('Standort') || txt.includes('Ziel')) locationIndex=i;
         // Index für die Sort/Route Spalte
         else if(txt.includes('Sort') || txt.includes('Route') || txt.includes('sorting_2') || txt.includes('sort')) sortRouteIndex=i;
+
 
         // NEU: TSO Index
         else if(txt === 'TSO') tsoIndex = i;
@@ -441,6 +470,7 @@ function updateDashboard(){
     let pCount=0, pHtml='';
     let sdtCount=0, sdtHtml='';
     let redBoxCount=0, redBoxHtml='';
+    let lowPCount=0, lowPHtml=''; // NEU
     // NEU
 
     // ACHTUNG: Zählt nur SICHTBARE Zeilen!
@@ -454,6 +484,7 @@ function updateDashboard(){
         const pCell = cells[pIndex];
         const sdtCell = cells[sdtIndex];
 
+
         // 1. Rohdaten abrufen & Display-Variablen VOR JEDEM CHECK DEFINIEREN (STRUKTURELLER FIX)
         const valLocationRaw = cells[locationIndex].textContent.trim().toUpperCase();
         const valSortRouteRaw = sortRouteIndex >= 0 ? cells[sortRouteIndex].textContent.trim().toUpperCase() : '';
@@ -463,6 +494,7 @@ function updateDashboard(){
 
         // --- Extrahieren der finalen Destination aus Sort/Route ---
         if (sortRouteDisplay.includes('->')) {
+
             const parts = sortRouteDisplay.split('->');
             if (parts.length > 1) {
                 sortRouteDisplay = parts.pop().trim();
@@ -474,7 +506,8 @@ function updateDashboard(){
             sortRouteDisplay = '';
         }
 
-        if (!primaryDisplayId) return; // Überspringen wenn keine ID identifizierbar
+        if (!primaryDisplayId) return;
+        // Überspringen wenn keine ID identifizierbar
 
         const pVal = getPVal(pCell);
         // NEU: TSO-Wert abrufen für RED Box Check
@@ -508,7 +541,8 @@ function updateDashboard(){
                     class="dock-id-copy"
                     data-copy-text="${copyText.replace(/"/g, '&quot;')}"
                     data-list-id="${listId}"
-                   title="Klick zum Kopieren: ${copyText}"
+
+                    title="Klick zum Kopieren: ${copyText}"
                 >
                     <span class="dock-id-large">${primaryDisplayId}</span>${sortRoutePart}
                 </span>
@@ -516,6 +550,7 @@ function updateDashboard(){
         };
 
         // --- SDT/P CRITICAL LOGIC ---
+
 
         if (depUtc !== null) {
             const {colorClass,text,diffHrs} = getSDTStatus(depUtc);
@@ -525,6 +560,7 @@ function updateDashboard(){
             // --- P CRITICAL LOGIC ---
             if (pCritical) {
 
+
                 pCount++;
                 pHtml += `<div class="criticalItem">${newDisplayContent(pList.id, text, colorClass)}</div>`;
                 pCell.classList.add('p-critical-highlight');
@@ -533,9 +569,21 @@ function updateDashboard(){
             // --- SDT CRITICAL LOGIC ---
             if (sdtCritical) {
 
+
                 sdtCount++;
                 sdtHtml += `<div class="criticalItem">${newDisplayContent(sdtList.id, text, colorClass)}</div>`;
                 sdtCell.classList.add('sdt-critical-highlight');
+            }
+
+            // --- NEU: Low P & Short SDT Critical Logic ---
+            // Kriterium: P-Wert unter 400 UND SDT unter 2 Stunden (120 Minuten)
+            const lowPCritical = (!isNaN(pVal) && pVal < 400);
+            const shortSDTCritical = diffHrs < 2; // SDT unter 2 Stunden
+
+            if (lowPCritical && shortSDTCritical) {
+                lowPCount++;
+                lowPHtml += `<div class="criticalItem">${newDisplayContent(lowPCriticalList.id, text, colorClass)}</div>`;
+                // Wichtig: Keine Tabellen-Highlighting für dieses Kriterium, da es eine spezielle Überwachung ist.
             }
         }
 
@@ -557,7 +605,7 @@ function updateDashboard(){
         // Red Box Logik (V2.9.37): Zählt JEDE rote Box, unabhängig vom TSO, da die rote Box selbst die Kritikalität signalisiert.
         if (isRedBordered) {
              redBoxCount++;
-             // Fügt SDT Status hinzu, falls vorhanden.
+        // Fügt SDT Status hinzu, falls vorhanden.
              let sdtStatusText = '';
              let sdtStatusClass = '';
              if (depUtc !== null) {
@@ -577,10 +625,11 @@ function updateDashboard(){
     updateDashboardView(pDashboard, pBadge, pList, pCount, pHtml);
     updateDashboardView(sdtDashboard, sdtBadge, sdtList, sdtCount, sdtHtml);
     updateDashboardView(redBoxDashboard, redBoxBadge, redBoxList, redBoxCount, redBoxHtml);
-    // NEU
+    updateDashboardView(lowPCriticalDashboard, lowPCriticalBadge, lowPCriticalList, lowPCount, lowPHtml); // NEU
 
     // --- ALARM LOGIC ---
-    const totalCount = pCount + sdtCount + redBoxCount; // NEU: Red Box zählt zum Gesamtalarm
+    const totalCount = pCount + sdtCount + redBoxCount + lowPCount; // NEU: lowPCount hinzugefügt
+    // NEU: Red Box zählt zum Gesamtalarm
     if (totalCount > 0) {
         document.title = `(🚨 ${totalCount}) ${originalTitle}`;
         if (lastCriticalCount === 0) {
@@ -645,13 +694,15 @@ function addTopSearchFilterButtons() {
                     padding:5px 10px;
                     background:${color};
                     border:none;
-                   color:#fff;
+
+                    color:#fff;
                     border-radius:5px;
                     cursor:pointer;
                     font-size:18px;
                     font-weight:bold;
     ">${f}</button>
-           `);
+
+            `);
             btn.on("click", function() {
                 let input = filterBox.find('input');
 
@@ -659,6 +710,7 @@ function addTopSearchFilterButtons() {
                 ['keydown','keypress','keyup'].forEach(ev => {
 
                     input[0].dispatchEvent(new KeyboardEvent(ev,{
+
 
                         key:'Enter', code:'Enter', keyCode:13, which:13, bubbles:true
                     }));
@@ -672,7 +724,7 @@ function addTopSearchFilterButtons() {
     };
 
     addButtons(orangeButtons, 'orange');
-    // DESTINATIONS – 3 lines (52 total)
+    // DESTINATIONS – 2 lines (52 total)
     const greyButtons = [
         "BCN1", "BCN4", "BGY1", "BLQ1", "BRE2", "BRE4", "BRQ2", "BVA1",
         "DTM1", "DTM2", "DTM3", "DUS2", "DUS4", "ERF1", "ETZ2", "FCO1",
@@ -680,15 +732,17 @@ function addTopSearchFilterButtons() {
         "FRA3", "FRA7", "HAM2", "KDE5", "KTW3", "LCJ2", "LCY2", "LEJ1",
         "LEJ5", "LIL1", "MAD7", "MRS1", "MUC3", "MXP6", "NUE1", "ORY1",
         "ORY4", "OVD1",
-       "PAD1", "PAD2",
+        "PAD1", "PAD2",
         "POZ1", "POZ2", "PRG2", "PSR2", "RLG1", "RMU1", "SCN2", "STR1",
         "SVQ1", "SZZ1", "TRN1", "WRO2", "XAR1", "XFR4"
     ];
     // GEÄNDERT: margin:5px 0 3px; wurde zu margin:15px 0 3px;
     topContainer.append('<div style="font-size:28px;font-weight:bold; margin:15px 0 3px; text-align:left;">Destinations</div>');
-    const row1_list = greyButtons.slice(0, 18);
-    const row2_list = greyButtons.slice(18, 36);
-    const row3_list = greyButtons.slice(36);
+
+    // NEU: Aufteilung in 2 Reihen mit je 26 Elementen
+    const row1_list = greyButtons.slice(0, 26);
+    const row2_list = greyButtons.slice(26);
+
     function addDestRow(list) {
         // V2.9.41: margin-bottom von 4px auf 3px reduziert für kompaktere Ansicht
         let row = $('<div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:3px;"></div>');
@@ -698,13 +752,15 @@ function addTopSearchFilterButtons() {
                     padding:5px 10px;
                     background:#333;
                     border:none;
-                   color:white;
+
+                    color:white;
                     border-radius:5px;
                     cursor:pointer;
                     font-size:18px;
                     font-weight:bold;
     ">${f}</button>
-           `);
+
+            `);
 
             btn.on("click", function() {
                 let input = filterBox.find('input');
@@ -712,6 +768,7 @@ function addTopSearchFilterButtons() {
                 ['keydown','keypress','keyup'].forEach(ev => {
 
                     input[0].dispatchEvent(new KeyboardEvent(ev,{
+
 
                         key:'Enter', code:'Enter', keyCode:13, which:13, bubbles:true
                     }));
@@ -727,7 +784,7 @@ function addTopSearchFilterButtons() {
 
     addDestRow(row1_list);
     addDestRow(row2_list);
-    addDestRow(row3_list);
+    // row3_list wurde entfernt
 
     return topContainer;
 }
@@ -746,6 +803,10 @@ function initializeCombinedFeatures() {
     // 3. Dashboard-Gruppe (rechts) erstellen
     let dashboardGroup = $(`<div id="dashboardGroup"></div>`);
 
+    // 3d. NEU: P < 400 + SDT < 2h Dashboard hinzufügen (AN ERSTER STELLE)
+    const lowPCriticalDashboardContainer = createDashboard('lowPCriticalDashboard', 'Low P & Short SDT (P<400 & SDT<2h)');
+    dashboardGroup.append(lowPCriticalDashboardContainer);
+
     // 3a. P-Dashboard erstellen und hinzufügen
     const pDashboardContainer = createDashboard('pCriticalDashboard', 'Volle Trailer (P > 1000)');
     dashboardGroup.append(pDashboardContainer);
@@ -757,6 +818,7 @@ function initializeCombinedFeatures() {
     // 3c. NEU: RED BOX Dashboard hinzufügen (Titel geändert auf 'TDR benötigt')
     const redBoxDashboardContainer = createDashboard('redBoxCriticalDashboard', 'TDR benötigt');
     dashboardGroup.append(redBoxDashboardContainer);
+
     wrapper.append(dashboardGroup);
     // 4. Den Wrapper vor dem Suchfeld einfügen
     filterBox.before(wrapper);
